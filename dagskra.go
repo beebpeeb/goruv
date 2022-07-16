@@ -19,7 +19,9 @@ const timeFormat = "2006-01-02 15:04:05"
 func (c *CustomTime) UnmarshalJSON(b []byte) (err error) {
 	s := strings.Trim(string(b), `"`)
 	t, err := time.Parse(timeFormat, s)
-	*c = CustomTime(t)
+	if err != nil {
+		*c = CustomTime(t)
+	}
 	return
 }
 
