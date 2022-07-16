@@ -25,6 +25,11 @@ func (c *CustomTime) UnmarshalJSON(b []byte) (err error) {
 	return
 }
 
+func (c *CustomTime) DateString() string {
+	t := time.Time(*c)
+	return t.Format("02.01.2006")
+}
+
 func (c *CustomTime) TimeString() string {
 	t := time.Time(*c)
 	return t.Format("15:04")
