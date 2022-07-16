@@ -8,17 +8,35 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
+
+type CustomTime time.Time
+
+const timeFormat = "2006-01-02 15:04:05"
+
+func (c *CustomTime) UnmarshalJSON(b []byte) (err error) {
+	s := strings.Trim(string(b), `"`)
+	t, err := time.Parse(timeFormat, s)
+	*c = CustomTime(t)
+	return
+}
+
+func (c *CustomTime) TimeString() string {
+	t := time.Time(*c)
+	return t.Format("15:04")
+}
 
 type Response struct {
 	Results []Show
 }
 
 type Show struct {
-	IsLive              bool   `json:"live"`
-	OriginalDescription string `json:"description"`
-	StartTime           string `json:"startTime"`
-	Title               string `json:"title"`
+	IsLive              bool       `json:"live"`
+	OriginalDescription string     `json:"description"`
+	StartTime           CustomTime `json:"startTime"`
+	Title               string     `json:"title"`
 }
 
 func (s Show) Description() string {
@@ -34,11 +52,7 @@ func (s Show) IsRepeat() bool {
 }
 
 func (s Show) Time() string {
-	t, err := time.Parse("2006-01-02 15:04:05", s.StartTime)
-	if err != nil {
-		log.Fatalf("Unable to parse date/time string: %s", err)
-	}
-	return t.Format("15:04")
+	return s.StartTime.TimeString()
 }
 
 func getSchedule() []Show {
@@ -70,7 +84,7 @@ type IndexData struct {
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	t := template.Must(template.ParseFiles("templates/index.html"))
+	t := template.Must(template.ParseFiles("templates/index.gohtml"))
 	data := IndexData{
 		Author: "Paul Burt",
 		Email:  "paul.burt@bbc.co.uk",
@@ -88,27 +102,19 @@ type ScheduleData struct {
 }
 
 func ScheduleHandler(w http.ResponseWriter, r *http.Request) {
-	if strings.ToLower(r.Header.Get("HX-Request")) == "true" {
-		t := template.Must(template.ParseFiles("templates/schedule.html"))
-		data := ScheduleData{Schedule: getSchedule()}
-		err := t.Execute(w, data)
-		if err != nil {
-			log.Fatalf("Unable to render HTML template: %s", err)
-		}
-	} else {
-		http.NotFound(w, r)
+	t := template.Must(template.ParseFiles("templates/schedule.gohtml"))
+	data := ScheduleData{Schedule: getSchedule()}
+	err := t.Execute(w, data)
+	if err != nil {
+		log.Fatalf("Unable to render HTML template: %s", err)
 	}
 }
 
 func main() {
-	// Handlers
-	http.HandleFunc("/", IndexHandler)
-	http.HandleFunc("/schedule", ScheduleHandler)
-
-	// Static files
+	r := mux.NewRouter()
+	r.HandleFunc("/", IndexHandler).Methods("GET")
+	r.HandleFunc("/schedule", ScheduleHandler).Methods("GET").Headers("HX-Request", "")
 	fs := http.FileServer(http.Dir("assets/"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
-
-	// Server
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", r)
 }
