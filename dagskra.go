@@ -8,21 +8,17 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 type CustomTime time.Time
 
-const timeFormat = "2006-01-02 15:04:05"
-
 func (c *CustomTime) UnmarshalJSON(b []byte) (err error) {
 	s := strings.Trim(string(b), `"`)
-	t, err := time.Parse(timeFormat, s)
-	if err != nil {
+	t, err := time.Parse("2006-01-02 15:04:05", s)
+	if err == nil {
 		*c = CustomTime(t)
 	}
-	return
+	return err
 }
 
 func (c *CustomTime) DateString() string {
@@ -62,66 +58,60 @@ func (s Show) Time() string {
 	return s.StartTime.TimeString()
 }
 
-func getSchedule() []Show {
+func getSchedule() ([]Show, error) {
 	url := "https://apis.is/tv/ruv"
-	res, err := http.Get(url)
-	if err != nil {
-		log.Fatalf("Unable to connect to %s: %s", url, err)
+	res, httpErr := http.Get(url)
+	if httpErr != nil {
+		return nil, httpErr
 	}
-	if res.Body != nil {
-		defer res.Body.Close()
-	}
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		log.Fatalf("Unable to read response body: %s", err)
+	defer res.Body.Close()
+	body, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return nil, readErr
 	}
 	var r Response
-	jsonErr := json.Unmarshal(body, &r)
-	if jsonErr != nil {
-		log.Fatalf("Unable to parse JSON: %s", jsonErr)
+	unmarshalErr := json.Unmarshal(body, &r)
+	if unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
-	return r.Results
+	return r.Results, nil
 }
 
-type IndexData struct {
-	Author string
-	Email  string
-	Title  string
-	Today  string
+type IndexTemplateData struct {
+	Author   string
+	Email    string
+	Schedule []Show
+	Title    string
+	Today    string
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	t := template.Must(template.ParseFiles("templates/index.gohtml"))
-	data := IndexData{
-		Author: "Paul Burt",
-		Email:  "paul.burt@bbc.co.uk",
-		Title:  "Dagskrá RÚV",
-		Today:  time.Now().Format("02.01.2006"),
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
 	}
-	err := t.Execute(w, data)
+	t := template.Must(template.ParseGlob("templates/*.html"))
+	schedule, err := getSchedule()
 	if err != nil {
-		log.Fatalf("Unable to render HTML template: %s", err)
+		log.Fatalf("Unable to load data from external API: %s", err)
 	}
-}
-
-type ScheduleData struct {
-	Schedule []Show
-}
-
-func ScheduleHandler(w http.ResponseWriter, r *http.Request) {
-	t := template.Must(template.ParseFiles("templates/schedule.gohtml"))
-	data := ScheduleData{Schedule: getSchedule()}
-	err := t.Execute(w, data)
-	if err != nil {
-		log.Fatalf("Unable to render HTML template: %s", err)
+	data := IndexTemplateData{
+		Author:   "Paul Burt",
+		Email:    "paul.burt@bbc.co.uk",
+		Schedule: schedule,
+		Title:    "Dagskrá RÚV",
+		Today:    schedule[0].StartTime.DateString(),
+	}
+	templateErr := t.Execute(w, data)
+	if templateErr != nil {
+		log.Fatalf("Unable to render HTML template: %s", templateErr)
 	}
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/", IndexHandler).Methods("GET")
-	r.HandleFunc("/schedule", ScheduleHandler).Methods("GET").Headers("HX-Request", "")
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", IndexHandler)
 	fs := http.FileServer(http.Dir("assets/"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
-	http.ListenAndServe(":8080", r)
+	http.ListenAndServe(":8080", mux)
 }
