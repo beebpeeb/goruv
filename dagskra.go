@@ -12,11 +12,11 @@ import (
 
 type CustomTime time.Time
 
-func (c *CustomTime) UnmarshalJSON(b []byte) (err error) {
+func (ct *CustomTime) UnmarshalJSON(b []byte) (err error) {
 	s := strings.Trim(string(b), `"`)
 	t, err := time.Parse("2006-01-02 15:04:05", s)
 	if err == nil {
-		*c = CustomTime(t)
+		*ct = CustomTime(t)
 	}
 	return err
 }
@@ -59,8 +59,7 @@ func (s Show) Time() string {
 }
 
 func getSchedule() ([]Show, error) {
-	url := "https://apis.is/tv/ruv"
-	res, httpErr := http.Get(url)
+	res, httpErr := http.Get("https://apis.is/tv/ruv")
 	if httpErr != nil {
 		return nil, httpErr
 	}
@@ -92,7 +91,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	t := template.Must(template.ParseGlob("templates/*.html"))
 	schedule, err := getSchedule()
-	if err != nil {
+	if err != nil || len(schedule) == 0 {
 		log.Fatalf("Unable to load data from external API: %s", err)
 	}
 	data := IndexTemplateData{
