@@ -21,8 +21,8 @@ func (ct *CustomTime) UnmarshalJSON(b []byte) (err error) {
 	return err
 }
 
-func (c *CustomTime) DateString() string {
-	t := time.Time(*c)
+func (ct *CustomTime) DateString() string {
+	t := time.Time(*ct)
 	return t.Format("02.01.2006")
 }
 
@@ -59,20 +59,20 @@ func (s Show) Time() string {
 }
 
 func getResponse() (Response, error) {
-	res, httpErr := http.Get("https://apis.is/tv/ruv")
+	res, err := http.Get("https://apis.is/tv/ruv")
 	emptyResponse := Response{Results: []Show{}}
-	if httpErr != nil {
-		return emptyResponse, httpErr
+	if err != nil {
+		return emptyResponse, err
 	}
 	defer res.Body.Close()
-	body, readErr := io.ReadAll(res.Body)
-	if readErr != nil {
-		return emptyResponse, readErr
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return emptyResponse, err
 	}
 	var r Response
-	unmarshalErr := json.Unmarshal(body, &r)
-	if unmarshalErr != nil {
-		return emptyResponse, unmarshalErr
+	jsonErr := json.Unmarshal(body, &r)
+	if jsonErr != nil {
+		return emptyResponse, jsonErr
 	}
 	return r, nil
 }
@@ -80,6 +80,7 @@ func getResponse() (Response, error) {
 type IndexTemplateData struct {
 	Author   string
 	Email    string
+	Error    error
 	Schedule []Show
 	Title    string
 	Today    string
@@ -92,19 +93,17 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	t := template.Must(template.ParseGlob("templates/*.html"))
 	response, err := getResponse()
-	if err != nil {
-		log.Fatalf("Unable to load data from external API: %s", err)
-	}
 	data := IndexTemplateData{
 		Author:   "Paul Burt",
 		Email:    "paul.burt@bbc.co.uk",
+		Error:    err,
 		Schedule: response.Results,
 		Title:    "Dagskrá RÚV",
 		Today:    response.Results[0].StartTime.DateString(),
 	}
-	templateErr := t.Execute(w, data)
-	if templateErr != nil {
-		log.Fatalf("Unable to render HTML template: %s", templateErr)
+	tplErr := t.Execute(w, data)
+	if tplErr != nil {
+		log.Fatalf("Unable to render HTML template: %s", tplErr)
 	}
 }
 
