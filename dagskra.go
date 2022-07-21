@@ -32,7 +32,7 @@ func (c *CustomTime) TimeString() string {
 }
 
 type Response struct {
-	Results []Show
+	Results []Show `json:"results"`
 }
 
 type Show struct {
@@ -58,22 +58,23 @@ func (s Show) Time() string {
 	return s.StartTime.TimeString()
 }
 
-func getSchedule() ([]Show, error) {
+func getResponse() (Response, error) {
 	res, httpErr := http.Get("https://apis.is/tv/ruv")
+	emptyResponse := Response{Results: []Show{}}
 	if httpErr != nil {
-		return nil, httpErr
+		return emptyResponse, httpErr
 	}
 	defer res.Body.Close()
 	body, readErr := io.ReadAll(res.Body)
 	if readErr != nil {
-		return nil, readErr
+		return emptyResponse, readErr
 	}
 	var r Response
 	unmarshalErr := json.Unmarshal(body, &r)
 	if unmarshalErr != nil {
-		return nil, unmarshalErr
+		return emptyResponse, unmarshalErr
 	}
-	return r.Results, nil
+	return r, nil
 }
 
 type IndexTemplateData struct {
@@ -90,16 +91,16 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := template.Must(template.ParseGlob("templates/*.html"))
-	schedule, err := getSchedule()
-	if err != nil || len(schedule) == 0 {
+	response, err := getResponse()
+	if err != nil {
 		log.Fatalf("Unable to load data from external API: %s", err)
 	}
 	data := IndexTemplateData{
 		Author:   "Paul Burt",
 		Email:    "paul.burt@bbc.co.uk",
-		Schedule: schedule,
+		Schedule: response.Results,
 		Title:    "Dagskrá RÚV",
-		Today:    schedule[0].StartTime.DateString(),
+		Today:    response.Results[0].StartTime.DateString(),
 	}
 	templateErr := t.Execute(w, data)
 	if templateErr != nil {
