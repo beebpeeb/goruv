@@ -24,8 +24,8 @@ func (ct *customTime) DateString() string {
 	return t.Format("02.01.2006")
 }
 
-func (c *customTime) TimeString() string {
-	t := time.Time(*c)
+func (ct *customTime) TimeString() string {
+	t := time.Time(*ct)
 	return t.Format("15:04")
 }
 
@@ -40,29 +40,32 @@ type Show struct {
 	Title               string     `json:"title"`
 }
 
-func (s Show) Description() string {
+func (s *Show) Description() string {
 	return strings.TrimSuffix(s.OriginalDescription, " e.")
 }
 
-func (s Show) HasDescription() bool {
+func (s *Show) HasDescription() bool {
 	return strings.TrimSpace(s.OriginalDescription) != ""
 }
 
-func (s Show) IsRepeat() bool {
+func (s *Show) IsRepeat() bool {
 	return strings.HasSuffix(s.OriginalDescription, " e.")
 }
 
-func (s Show) Time() string {
+func (s *Show) Time() string {
 	return s.StartTime.TimeString()
 }
 
-func getResponse() (r Response, err error) {
-	httpResponse, err := http.Get("https://apis.is/tv/ruv")
+func getResponse() (ret Response, err error) {
+	var c = &http.Client{
+		Timeout: time.Second * 10,
+	}
+	res, err := c.Get("https://apis.is/tv/ruv")
 	if err != nil {
 		return
 	}
-	defer httpResponse.Body.Close()
-	body, err := io.ReadAll(httpResponse.Body)
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return
 	}
