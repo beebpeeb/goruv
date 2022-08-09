@@ -30,33 +30,33 @@ func (ct *customTime) TimeString() string {
 }
 
 type Response struct {
-	Results []Show `json:"results"`
+	Results []Listing `json:"results"`
 }
 
-type Show struct {
+type Listing struct {
 	IsLive              bool       `json:"live"`
 	OriginalDescription string     `json:"description"`
 	StartTime           customTime `json:"startTime"`
 	Title               string     `json:"title"`
 }
 
-func (s *Show) Description() string {
+func (s *Listing) Description() string {
 	return strings.TrimSuffix(s.OriginalDescription, " e.")
 }
 
-func (s *Show) HasDescription() bool {
+func (s *Listing) HasDescription() bool {
 	return strings.TrimSpace(s.OriginalDescription) != ""
 }
 
-func (s *Show) IsRepeat() bool {
+func (s *Listing) IsRepeat() bool {
 	return strings.HasSuffix(s.OriginalDescription, " e.")
 }
 
-func (s *Show) Time() string {
+func (s *Listing) Time() string {
 	return s.StartTime.TimeString()
 }
 
-func getResponse() (ret Response, err error) {
+func fetchData() (ret Response, err error) {
 	var c = &http.Client{
 		Timeout: time.Second * 10,
 	}

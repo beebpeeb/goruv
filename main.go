@@ -9,7 +9,7 @@ import (
 type IndexTemplateData struct {
 	Author   string
 	Email    string
-	Schedule []Show
+	Schedule []Listing
 	Title    string
 	Today    string
 }
@@ -20,7 +20,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := template.Must(template.ParseGlob("templates/*.html"))
-	response, err := getResponse()
+	response, err := fetchData()
 	if err != nil {
 		log.Fatalf("Unable to load data from external API: %v", err)
 	}
