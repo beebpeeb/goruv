@@ -2,7 +2,6 @@ package main
 
 import (
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -20,10 +19,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	t := template.Must(template.ParseGlob("templates/*.html"))
-	response, err := fetchData()
-	if err != nil {
-		log.Fatalf("Unable to load data from external API: %v", err)
-	}
+	response, _ := fetchData()
 	data := IndexTemplateData{
 		Author:   "Paul Burt",
 		Email:    "paul.burt@bbc.co.uk",
@@ -31,8 +27,5 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		Title:    "Dagskrá RÚV",
 		Today:    response.Results[0].StartTime.DateString(),
 	}
-	templateError := t.Execute(w, data)
-	if templateError != nil {
-		log.Fatalf("Unable to render HTML template: %v", templateError)
-	}
+	t.Execute(w, data)
 }
