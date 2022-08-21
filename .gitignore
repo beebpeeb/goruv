@@ -1,5 +1,6 @@
 .*
 !/.air.toml
+!/.deepsource.toml
 !/.editorconfig
 !/.gitignore
 /tmp/
