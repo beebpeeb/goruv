@@ -18,7 +18,7 @@ func (ct *customTime) UnmarshalJSON(b []byte) (err error) {
 
 func (ct *customTime) DateString() string {
 	t := time.Time(*ct)
-	return t.Format("02.01.2006")
+	return t.Format("2.1.2006")
 }
 
 func (ct *customTime) TimeString() string {
