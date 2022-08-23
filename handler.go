@@ -13,7 +13,7 @@ type IndexTemplateData struct {
 	Today    string
 }
 
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
+func IndexHandler(w http.ResponseWriter, _ *http.Request) {
 	t := template.Must(template.ParseGlob("templates/*.html"))
 	response, _ := fetchData()
 	data := IndexTemplateData{

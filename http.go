@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func fetchData() (ret Response, err error) {
+func fetchData() (r Response, err error) {
 	var c = &http.Client{
 		Timeout: time.Second * 10,
 	}
